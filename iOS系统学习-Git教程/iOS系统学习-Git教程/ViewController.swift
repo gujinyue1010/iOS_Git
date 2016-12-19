@@ -45,6 +45,7 @@
       使用git diff   可以让我们看到当前修改了什么(能够与没修改前比较)
       视同git diff readme.txt 查看单个文件的修改
    ==>提交修改和提交新文件是一样的。都需要先add再commit。
+   ==>git的分支必须指向一个commit,没有任何commit就没有任何分支。提交第一个commit后自动创建分支。
  
       (4)版本回退: 当你提交了多次修改之后,突然发现修改出错,想要回退。
          1.使用 git log 可以查看历史提交记录。显示从最近到最远的提交日志。(git log --pretty=oneline)
@@ -53,7 +54,7 @@
              或者
              git reset --hard ??  ??代表提交日志中的commit id。
    ==>注意: 如果回退版本了,突然又发现不需要回退了。如果命令行窗口还没关掉,能够找到想要的版本的commit id,还是可以回去的。如果命令行窗口掉了,也是有后悔药可以吃的,利用git reflog 查看每一次命令。
-       也即: git log 可以查看提交历史,决定回退到哪个版本。
+       也即: git log 可以查看提交历史,决定回退到哪个版本。(git log --pretty=oneline)
             git reflog 可以查看命令历史,决定回到未来哪个版本。
  
  4.工作区和暂存区。
@@ -186,7 +187,66 @@
    ==>如果创建了dev分支,要git push origin dev 把dev分支推送到远程。
  
    2) 解决冲突。
-      git log --graph --pretty=oneline 可以看到合并分支图。
+      .git log --graph --pretty=oneline 可以看到合并分支图。
+      .当Git无法自动合并分支时,就必须首先解决冲突。解决冲突后,再提交,合并完成。
+      .一般来说,开分支是为了开发新功能,所以解决冲突并且合并之后,就可以删除了。那如果还想在分支上继续做一些其他事情,可以把master合并到分支上,使得master和分支保持一致。
+ 
+   3) 分支管理策略。
+      在实际开发中,我们应该按照几个基本原则进行分支管理。
+      (1) master分支应该是非常稳定的,也就是仅用来发布新版本的,平时不要在上面干活。
+      (2) 干活都在分支上,测试OK后,合并到master。所以团队中每个人都在dev分支上干活,每个人都有自己的分支。
+      (3) --no-ff 参数可以用普通模式合并,合并后的历史有分支,就能看出来曾经做过合并。而fast forward合并就看不出来曾经做过合并。
+ 
+   4) Bug分支。
+      情景: 你正在某分支上开发新功能,突然有个bug需要修复。那很自然就要另开一个分支来修复。但是当前分支上的工作你还没做完,不能提交。
+      .git stash: 可以把当前工作现场"储藏起来",等以后恢复现场后继续工作。
+      .再使用git stash查看工作区,就是干净的。我们就可以放心创建分支来修复bug了。当我们修复完bug后又要回到之前的分支继续开发任务了。
+      .git stash list: 工作现场还在,Git把stash内容存在某个地方了,但是需要回复。
+       (1)git stash apply,但是恢复后,stash内容并不删除,使用git stash drop来删除。
+       (2)git stash pop。恢复的同事把stash内容也删除了。再用git stash list,就看不到任何stash内容了。
+ 
+   5) Feature分支。
+      情景: 在某分支上开发了一个新功能,然后 add, commit。然后切换回需要合并的master。但是突然说这个功能不要了。那么怎么删除呢？
+      .git branch -d dev。Git会提示:dev分支还没有被合并,如果删除,将丢失修改。如果强行删除,使用 git branch -D dev。
+ ==>删除远程分支: git push origin:[要删除的远程分支的名字]
+ 
+   6) 多人协作。
+      .当我们从远程仓库克隆时,实际上Git自动把本地的master分支和远程的master分支对应起来了。并且远程仓库的默认名称是:origin。
+      .查看远程仓库的信息,git remote。 
+       git remote -v 显示更详细的信息。显示了可以抓取和推送的origin地址。
+ 
+      .推送分支:就是把该分支上的所有本地提交推送到远程库。
+       (1)master分支是主分支。需要时刻与远程同步。
+       (2)dev分支是开发分支,团队所有成员都在上面工作,所以也需要与远程同步。
+       (3)bug分支只用于在本地修复bug,就没必要推送到远程了。
+       (4)feature分支是否推送到远程,取决于你是否和你的小伙伴在上面合作开发。
+ ==>在Git中,分支完全可以在本地自己藏着玩,是否推送,是心情而定。
+      
+      .假设某小伙伴从远程库clone时,默认情况下,只能看到本地的master分支。现在小伙伴要在dev分支上开发,就必须创建远程origin的dev分支到本地,于是就得用这个命令创建本地dev分支。
+       git checkout -b dev origin/dev。
+       这样就可以在dev上继续修改,然后,时不时地把dev分支push到远程。
+      
+      .如果没有指定本地dev分支到远程origin/dev分支的链接。
+       git branch --set-upstream dev origin/dev
+ 
+ ==> 多人协作的工作模式通常是这样的:
+     1.git push origin branch-name 推送自己的修改。
+     2.如果推送失败,则因为远程分支比你的本地 更 新,先git pull试图合并。
+     3.如果合并有冲突,则解决冲突,并在本地提交。
+     4.没有冲突或者解决掉冲突后,再用git push origin branch-name推送。
+ 
+ 小结:
+     (1)查看远程库信息,使用 git remote -v
+     (2)本地新建的分支如果不推送到远程,对其他人是不可见的。
+     (3)从本地推送分支,使用git push origin branch-name。如果推送失败,先用git pull抓取远程的新提交。
+     (4)在本地创建和远程分支对应的分支。git checkout -b branch-name origin/branch-name (本地和远程分支的名称最好一致)。
+     (5)建立本地分支和远程分支的关联。git branch --set-upstream branch-name origin/branch-name。
+     (6)从远程抓取分支,使用git pull。如果有冲突,要先处理冲突。
+ 
+     (7)将本地分支作为新分支推送到远程。
+        git push origin local_branch:remote_branch
+        local_branc 必须是本地存在的分支。remote_branch为远程分支。如果remote_branch不存在则会自动创建分支。
+     (8)删除远程分支。 git push origin --delete branch-name
  */
 import UIKit
 
